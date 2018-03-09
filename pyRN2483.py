@@ -175,3 +175,6 @@ class RN2483:
         self._log.info("Received data \"%s\"" % data)
         data = data.replace(self.CRLF, b'').decode('utf-8')
         return data
+
+    def wake(self):
+        self._log.error("Do not know how to wake up device")
