@@ -176,5 +176,10 @@ class RN2483:
         data = data.replace(self.CRLF, b'').decode('utf-8')
         return data
 
+    def reset(self):
+        data = self.sys_reset()
+        time.sleep(0.5)
+        return data
+
     def wake(self):
         self._log.error("Do not know how to wake up device")

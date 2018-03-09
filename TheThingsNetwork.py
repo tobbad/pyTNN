@@ -51,10 +51,10 @@ class TheThingsNetwork:
         self._cb = callback
         
     def join(self, appEui, appKey, retries=-1, retryDelay=10000):
-        pass 
+        self._log.error("%s not implemented" % (inspect.stack()[0][3]))
     
     def personalize(self, devAddr, nwkSKey, appSKey):
-        pass
+        self._log.error("%s not implemented" % (inspect.stack()[0][3]))
     
     def sendBytes(self, payload, port=1, confirme=False, sf=0):
         return self.TTN_ERROR_SEND_COMMAND_FAILED
@@ -63,7 +63,7 @@ class TheThingsNetwork:
         return self.sendBytes(b'\x00', confirm)
 
     def provision(self, appEui, appKey):
-        pass
+        self._log.error("%s not implemented" % (inspect.stack()[0][3]))
     
     def sleep(self, seconds):
         self._dev.sys_sleep(seconds*1000)
