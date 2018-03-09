@@ -178,7 +178,6 @@ class RN2483:
 
     def reset(self):
         data = self.sys_reset()
-        time.sleep(0.5)
         return data
 
     def wake(self):

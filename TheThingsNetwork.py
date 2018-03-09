@@ -85,7 +85,7 @@ class TheThingsNetwork:
 
 if __name__ == '__main__':
     ter_pat = '/dev/ttyUSB%d'
-    cur_ter = 0
+    cur_ter = 1
     term = ter_pat % cur_ter
     if os.path.exists(term):
         rn2483 = RN2483(term)
