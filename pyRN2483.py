@@ -38,17 +38,26 @@ def get_func(comp_name, para_name, min_para_cnt, is_command, is_setable, is_geta
             if (is_getable is True and pcnt ==  min_para_cnt):
                 data = "%s get %s%s" % ( comp_name, para_name, data)
                 conv = convert
+                logging.debug("Convert to %s" % (str(conv)))
             self._write(data)
             res = self._read()
-            if conv:
-                if isinstance(conv[0], int):
+            if conv is not None:
+                if conv[0] == int:
+                    logging.debug("Convert to int(data ,%d)" % (conv[1]))
                     res = conv[0](res, conv[1])
-                elif isinstance(conv[0], float):
+                elif conv[0] == float:
+                    logging.debug("Convert to float")
                     if res == "none":
                         res = None
                     else:
                         res = float(res)
-            logging.debug(">> Result: %s" % (res))
+                else:
+                    logging.debug("Unknown type %s %s" % (str(conv[0]), isinstance(conv[0],int)))
+                    
+            else:
+                logging.debug("No conversion")
+                    
+            logging.debug(">> Result: %s (type= %s)" % (res, type(res)))
             return res
         return new_func
 
@@ -78,9 +87,9 @@ class RN2483:
      ('sys', 'vdd', 0,            False,           False,          True,    (int, 10)),
      ('sys', 'hweui', 0,          False,           False,          True,    (int, 16)),
      ('sys', 'pindig', 1,         False,           True,           True,    (int, 10)),
+     ('sys', 'reset', 0,          True,            False,          False,   None),
      ('sys', 'sleep', 0,          True,            False,          False,   None),
      ('sys', 'factoryRESET', 0,   True,            False,          False,   None),
-     ('mac', 'reset', 1,          True,            False,          False,   None),
      ('mac', 'tx', 3,             True,            False,          False,   None),
      ('mac', 'join', 1,           True,            False,          False,   None),
      ('mac', 'save', 0,           True,            False,          False,   None),
@@ -141,7 +150,7 @@ class RN2483:
         self._byte_wait_s =  15.0/self.BAUDRATE
         self._read_delay_s = 0.9
         self.com = Serial(dev_name,  self.BAUDRATE,  timeout=2*self._byte_wait_s)
-        res = self.sys_reset()
+        res = self.reset()
         self._log.debug("sys reset result \"%s\"" % (res))
 
     def _write(self,  data,  last = True):
@@ -166,79 +175,3 @@ class RN2483:
         self._log.info("Received data \"%s\"" % data)
         data = data.replace(self.CRLF, b'').decode('utf-8')
         return data
-
-    def reset(self):
-        self.sys.reset()
-        time.sleep(0.5)
-        return self._read()
-
-    def setup(self):
-        self.mac_devaddr("02011E16")
-        self.mac_appskey("2B7E151628AED2A6ABF7158809CF4F3C")
-        self.mac_nwkskey("2B7E151628AED2A6ABF7158809CF4F3C")
-        self.mac_adr("off")
-        self.mac_rx2((3,"869525000"))
-        self.mac_join("abp")
-
-    def send(self,  data):
-        port = 1
-        self._log.info("Send \"%s\" to port %d" % (data, port))
-        tx_data = ("uncnf", port)
-        var = ""
-        for ch in data:
-            var += ("%02X" % ord(ch))
-        tx_data += (var,)
-        res = self.mac_tx(tx_data)
-        return res
-
-    def run(self):
-        while True:
-            self.send("Hello LoRa World %s" % (time.strftime("%d.%m.%Y %H:%M:%S")))
-            time.sleep(5)
-
-
-
-class TheThingsNetwork:
-    
-    def __init__(self, dev):
-        self._dev = dev
-    
-    def reset(self):
-        return self._dev.reset()
-
-    def getHardwareEui(self):
-        return self.sys_hweui()
-
-    def getAppEui(self):
-        return self.mac_appeui()
-    
-    def showStatus(self):
-        res = ()
-        res += ("EUI: %08X" % self.getHardwareEui(),)
-        res += ("Battery: %d mV" % self.sys_vdd(),)
-        res += ("DevEUI: %08X" % self.mac_deveui(),)
-        res += ("AppEUI: %08X" % self.mac_appeui(),)
-        res += ("Data Rate: %d" % self.radio_bitrate(),)
-        res += ("RX Delay 1: %d" % self.mac_rxdelay1(),)
-        res += ("RX Delay 2: %d" % self.mac_rxdelay2(),)
-        return "\n".join(res)
-
-
-if __name__ == '__main__':
-    ter_pat = '/dev/ttyUSB%d'
-    cur_ter = 0
-    while True:
-        rn2483 = None
-        term = ter_pat % cur_ter
-        if os.path.exists(term):
-            rn2483 = RN2483(term)
-            #rn2483.setup()
-            print(rn2483.showStatus())
-            sys.exit()
-        else:
-            cur_ter = (cur_ter +1)%2
-        if rn2483 is not None:
-            while os.path.exists(term):
-                rn2483.send("Hello LoRa World %s" % (time.strftime("%d.%m.%Y %H:%M:%S")))
-                time.sleep(5)
-
