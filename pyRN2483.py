@@ -6,11 +6,6 @@ Python module to controll a RN2483 over tty interface.
 from serial import Serial, serialutil
 import time
 import logging
-import os
-import sys
-
-
-logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
 
 def prop(func):
     nitem = func.__name__.split('_')
@@ -82,7 +77,7 @@ class RN2483:
 
     ADD_METHOD = [
     # Layer  Item   min_para_cnt, is_command, is_Set_able,  is_Get_able, Returned datatype (str )
-     ('sys', 'ver', 0,            False,           False,          True,    (int, 10)),
+     ('sys', 'ver', 0,            False,           False,          True,    None),
      ('sys', 'nvm', 2,            False,           True,           True,    (int, 10)),
      ('sys', 'vdd', 0,            False,           False,          True,    (int, 10)),
      ('sys', 'hweui', 0,          False,           False,          True,    (int, 16)),
@@ -149,7 +144,8 @@ class RN2483:
         self.DEBUG = debug
         self._byte_wait_s =  15.0/self.BAUDRATE
         self._read_delay_s = 0.9
-        self.com = Serial(dev_name,  self.BAUDRATE,  timeout=2*self._byte_wait_s)
+        self._com = Serial(dev_name,  self.BAUDRATE,  timeout=2*self._byte_wait_s)
+        self.autobaud()
         res = self.reset()
         self._log.debug("sys reset result \"%s\"" % (res))
 
@@ -157,7 +153,7 @@ class RN2483:
         data=bytes(data,  'utf-8') + (self.CRLF if last else b"")
         self._log.debug("Send data \"%s\"" % data)
         start = time.time()
-        self.com.write(data)
+        self._com.write(data)
         stop = time.time()
         sleep_time=float(15*len(data))/self.BAUDRATE
         time.sleep(sleep_time)
@@ -168,7 +164,7 @@ class RN2483:
         do_read = True
         data = b''
         while do_read:
-            data += self.com.read(1)
+            data += self._com.read(1)
             time.sleep(self._byte_wait_s)
             if len(data)>2 and data[-2:]==self.CRLF:
                 do_read = False
@@ -180,5 +176,19 @@ class RN2483:
         data = self.sys_reset()
         return data
 
+    def autobaud(self):
+        retries = 10
+        version = None
+        while retries>0 and (version is None):
+            time.sleep(0.1)
+            self._com.send_break()
+            while self._com.break_condition:
+                time.sleep(0.001)
+            self._write(chr(0x55))
+            dummy = self._read()
+            version = self.sys_ver()
+            self._log.debug("Autobaud get version %s" % version)
+            retries -= 1
+    
     def wake(self):
-        self._log.error("Do not know how to wake up device")
+        self.autobaud()
